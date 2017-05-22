@@ -86,7 +86,7 @@ function! s:TreeDirNode.displayString()
 
     let flags = cascade[-1].path.flagSet.renderToString()
 
-    return sym . ' ' . flags . rv
+    return sym . ' ' . rv . flags
 endfunction
 
 "FUNCTION: TreeDirNode.findNode(path) {{{1
