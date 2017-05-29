@@ -157,46 +157,36 @@ endfunction
 
 " FUNCTION: NERDTreeDeleteNode() {{{1
 function! NERDTreeDeleteNode()
-    let currentNode = g:NERDTreeFileNode.GetSelected()
-    let confirmed = 0
-
-    if currentNode.path.isDirectory && currentNode.getChildCount() > 0
-        let choice =input("Delete the current node\n" .
-                         \ "==========================================================\n" .
-                         \ "STOP! Directory is not empty! To delete, type 'yes'\n" .
-                         \ "" . currentNode.path.str() . ": ")
-        let confirmed = choice ==# 'yes'
-    else
-        echo "Delete the current node\n" .
-           \ "==========================================================\n".
-           \ "Are you sure you wish to delete the node:\n" .
-           \ "" . currentNode.path.str() . " (yN):"
-        let choice = nr2char(getchar())
-        let confirmed = choice ==# 'y'
+    " customized function that moves things to the recycle bin 
+    let curNode = g:NERDTreeFileNode.GetSelected()
+    let newNodePath = input("Delete the current node\n" .
+    \ "==========================================================\n" .
+    \ "Enter the new path for the node:                          \n" .
+    \ "", g:NERDTreePathRecycleBin . fnamemodify(curNode.path.str(), ':t') , "file")
+    if newNodePath ==# ''
+        call nerdtree#echo("Node Renaming Aborted.")
+        return
     endif
 
+    try
+        let bufnum = bufnr("^".curNode.path.str()."$")
 
-    if confirmed
-        try
-            call currentNode.delete()
-            call NERDTreeRender()
+        call curNode.rename(newNodePath)
+        call NERDTreeRender()
 
-            "if the node is open in a buffer, ask the user if they want to
-            "close that buffer
-            let bufnum = bufnr("^".currentNode.path.str()."$")
-            if buflisted(bufnum)
-                let prompt = "\nNode deleted.\n\nThe file is open in buffer ". bufnum . (bufwinnr(bufnum) ==# -1 ? " (hidden)" : "") .". Delete this buffer? (yN)"
-                call s:promptToDelBuffer(bufnum, prompt)
-            endif
+        "if the node is open in a buffer, ask the user if they want to
+        "close that buffer
+        if bufnum != -1
+            let prompt = "\nNode renamed.\n\nThe old file is open in buffer ". bufnum . (bufwinnr(bufnum) ==# -1 ? " (hidden)" : "") .". Replace this buffer with a new file? (yN)"
+            call s:promptToRenameBuffer(bufnum,  prompt, newNodePath)
+        endif
 
-            redraw
-        catch /^NERDTree/
-            call nerdtree#echoWarning("Could not remove node")
-        endtry
-    else
-        call nerdtree#echo("delete aborted")
-    endif
+        call curNode.putCursorHere(1, 0)
 
+        redraw
+    catch /^NERDTree/
+        call nerdtree#echoWarning("Node Not Renamed.")
+    endtry
 endfunction
 
 " FUNCTION: NERDTreeListNode() {{{1
